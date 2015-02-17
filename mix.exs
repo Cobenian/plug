@@ -24,7 +24,7 @@ defmodule Plug.Mixfile do
   end
 
   def deps do
-    [{:cowboy, "~> 1.1", optional: true},
+    [{:cowboy, "~> 1.0", optional: true},
      {:earmark, "~> 0.1", only: :docs},
      {:ex_doc, "~> 0.7", only: :docs},
      {:inch_ex, only: :docs},
