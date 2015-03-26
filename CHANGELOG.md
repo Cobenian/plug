@@ -1,5 +1,30 @@
 ## Changelog
 
+## v0.11.1
+
+* Enhancements
+  * Allow Plug mimes to be configured via application environment
+  * Extend JSON parser to be compatible with all json compatible content types. This includes types with suffix `+json`
+  * Add `Plug.Conn.clear_session/1`
+
+* Bug fixes
+  * Do not require cowboy at compile time
+  * Also parse request bodies on DELETE requests
+
+## v0.11.0
+
+* Enhancements
+  * Add `Plug.Conn.async_assign/3` and `Plug.Conn.await_assign/3` to start and await for assigns asynchronously, mimic'ing `Task.async/1` and `Task.await/2` behaviour
+  * Add `Plug.Conn.WrapperError` to propagate an error with the connection for better debugging by either `Plug.Debugger` or `Plug.ErrorHandler`
+  * Add `Plug.Conn.update_resp_header/4` to update a response header or set its initial value if not present
+
+* Bug fixes
+  * Skip parsing of files when no filename is sent
+  * Fix how script_name are accumulated with multiple calls to `Plug.Router.forward/2`
+
+* Backwards incompatible changes
+  * `Plug.CSRFProtection` now uses a session to store tokens. Tokens are now generated on demand and can be accessed via `Plug.CSRFProtection.get_csrf_token/0`
+
 ## v0.10.0
 
 * Enhancements

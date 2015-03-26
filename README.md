@@ -49,7 +49,7 @@ You can use plug in your projects in two steps:
     ```elixir
     def deps do
       [{:cowboy, "~> 1.0.0"},
-       {:plug, "~> 0.9.0"}]
+       {:plug, "~> 0.11.0"}]
     end
     ```
 
@@ -101,6 +101,8 @@ defmodule AppRouter do
   get "/hello" do
     send_resp(conn, 200, "world")
   end
+
+  forward "/users", to: UsersRouter
 
   match _ do
     send_resp(conn, 404, "oops")

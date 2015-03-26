@@ -17,6 +17,14 @@ defmodule Plug.ConnTest do
     assert conn.assigns[:hello] == :world
   end
 
+  test "async_assign/3 and await_assign/3" do
+    conn = conn(:get, "/")
+    assert conn.assigns[:hello] == nil
+    conn = async_assign(conn, :hello, fn -> :world end)
+    conn = await_assign(conn, :hello)
+    assert conn.assigns[:hello] == :world
+  end
+
   test "put_status/2" do
     conn = conn(:get, "/")
     assert put_status(conn, nil).status == nil
@@ -321,6 +329,29 @@ defmodule Plug.ConnTest do
     end
   end
 
+  test "update_resp_header/4" do
+    conn1 = conn(:head, "/foo") |> put_resp_header("x-foo", "bar")
+    conn2 = update_resp_header(conn1, "x-foo", "bong", &(&1 <> ", baz"))
+    assert get_resp_header(conn2, "x-foo") == ["bar, baz"]
+    assert length(conn1.resp_headers) == length(conn2.resp_headers)
+
+    conn1 = conn(:head, "/foo")
+    conn2 = update_resp_header(conn1, "x-foo", "bong", &(&1 <> ", baz"))
+    assert get_resp_header(conn2, "x-foo") == ["bong"]
+
+    conn1 = %{conn(:head, "/foo") | resp_headers:
+      [{"x-foo", "foo"}, {"x-foo", "bar"}]}
+    conn2 = update_resp_header(conn1, "x-foo", "in", &String.upcase/1)
+    assert get_resp_header(conn2, "x-foo") == ["FOO", "bar"]
+  end
+
+  test "update_resp_header/4 raises when the conn was already been sent" do
+    conn = conn(:head, "/foo") |> send_resp(200, "ok")
+    assert_raise Plug.Conn.AlreadySentError, fn ->
+      conn |> update_resp_header("x-foo", "init", &(&1))
+    end
+  end
+
   test "put_resp_content_type/3" do
     conn = conn(:head, "/foo")
 
@@ -572,6 +603,19 @@ defmodule Plug.ConnTest do
             |> delete_session("baz")
 
     assert get_session(conn, "foo") == "bar"
+    assert get_session(conn, "baz") == nil
+  end
+
+  test "clear_session/1" do
+    opts = Plug.Session.init(store: ProcessStore, key: "foobar")
+    conn = conn(:get, "/") |> Plug.Session.call(opts) |> fetch_session()
+
+    conn = conn
+            |> put_session("foo", "bar")
+            |> put_session("baz", "boom")
+            |> clear_session
+
+    assert get_session(conn, "foo") == nil
     assert get_session(conn, "baz") == nil
   end
 

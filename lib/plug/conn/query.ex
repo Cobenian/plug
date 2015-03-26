@@ -63,8 +63,19 @@ defmodule Plug.Conn.Query do
   end
 
   def decode(query, initial) do
-    decoder = URI.query_decoder(query)
-    Enum.reduce(Enum.reverse(decoder), initial, &decode_pair(&1, &2))
+    parts = :binary.split(query, "&", [:global])
+    Enum.reduce(Enum.reverse(parts), initial, &decode_string_pair(&1, &2))
+  end
+
+  defp decode_string_pair(string, acc) do
+    current =
+      case :binary.split(string, "=") do
+        [key, value] ->
+          {decode_www_form(key), decode_www_form(value)}
+        [key] ->
+          {decode_www_form(key), nil}
+      end
+    decode_pair(current, acc)
   end
 
   @doc """
@@ -181,4 +192,36 @@ defmodule Plug.Conn.Query do
   defp encode_www_form(item) do
     item |> to_string |> URI.encode_www_form
   end
+
+  # Elixir's implementation up to v1.0.3 was slow
+  # when decoding www forms. Here is the fast implementation
+  # that ships with latest Elixir. We can remove this
+  # once Elixir v1.1.0 is out.
+  import Bitwise
+
+  defp decode_www_form(str) do
+    unpercent(str, "", true)
+  catch
+    :malformed_uri ->
+      raise ArgumentError, "malformed URI #{inspect str}"
+  end
+
+  defp unpercent(<<?+, tail::binary>>, acc, spaces = true) do
+    unpercent(tail, <<acc::binary, ?\s>>, spaces)
+  end
+
+  defp unpercent(<<?%, hex_1, hex_2, tail::binary>>, acc, spaces) do
+    unpercent(tail, <<acc::binary, bsl(hex_to_dec(hex_1), 4) + hex_to_dec(hex_2)>>, spaces)
+  end
+  defp unpercent(<<?%, _::binary>>, _acc, _spaces), do: throw(:malformed_uri)
+
+  defp unpercent(<<head, tail::binary>>, acc, spaces) do
+    unpercent(tail, <<acc::binary, head>>, spaces)
+  end
+  defp unpercent(<<>>, acc, _spaces), do: acc
+
+  defp hex_to_dec(n) when n in ?A..?F, do: n - ?A + 10
+  defp hex_to_dec(n) when n in ?a..?f, do: n - ?a + 10
+  defp hex_to_dec(n) when n in ?0..?9, do: n - ?0
+  defp hex_to_dec(_n), do: throw(:malformed_uri)
 end
